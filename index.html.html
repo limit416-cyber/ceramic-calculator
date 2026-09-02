@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>도자기 배합 계산기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bone:#F1EAE0; --surface:#FBF7F1; --ink:#2A2520; --soft:#6E645A;
+  --line:#E1D6C4; --green:#5C7A6B; --green-soft:#E7EEE9;
+  --slate:#57657A; --slate-soft:#E6EAF0; --oxide:#A15C3C; --oxide-soft:#F3E4DB;
+  --clay:#8E6A45; --clay-soft:#EFE4D4;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bone);color:var(--ink);font-family:'IBM Plex Sans KR',sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:720px;margin:0 auto;padding:36px 20px 64px}
+header{margin-bottom:26px}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;color:var(--soft);text-transform:uppercase;margin-bottom:8px}
+h1{font-family:Fraunces,serif;font-weight:600;font-size:30px;margin:0 0 6px}
+header p{margin:0;color:var(--soft);font-size:14px;line-height:1.6}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px}
+.tab{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 8px;cursor:pointer;text-align:center;transition:.15s}
+.tab:hover{transform:translateY(-1px)}
+.tab .hole{width:7px;height:7px;border-radius:50%;background:var(--bone);border:1px solid var(--line);margin:0 auto 7px}
+.tab .label{font-size:12.5px;font-weight:500;line-height:1.35}
+.tab .sub{display:block;font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--soft);margin-top:3px}
+.tab.active{border-color:var(--accent);background:var(--accent-soft)}
+.tab.active .hole{background:var(--accent);border-color:var(--accent)}
+.tab[data-tool=slip]{--accent:var(--green);--accent-soft:var(--green-soft)}
+.tab[data-tool=plaster]{--accent:var(--slate);--accent-soft:var(--slate-soft)}
+.tab[data-tool=pigment]{--accent:var(--oxide);--accent-soft:var(--oxide-soft)}
+.tab[data-tool=shrink]{--accent:var(--clay);--accent-soft:var(--clay-soft)}
+.tab[data-tool=volume]{--accent:var(--slate);--accent-soft:var(--slate-soft)}
+.panel{display:none;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px}
+.panel.active{display:block}
+.panel-title{font-family:Fraunces,serif;font-size:19px;font-weight:600;margin-bottom:4px}
+.panel-desc{font-size:13px;color:var(--soft);margin:0 0 18px;line-height:1.6}
+.segmented{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:18px}
+.segmented button{border:0;background:transparent;padding:8px 12px;font:500 12px 'IBM Plex Sans KR';color:var(--soft);cursor:pointer;flex:1}
+.segmented button+button{border-left:1px solid var(--line)}
+.segmented button.active{background:var(--seg-accent);color:#fff}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px 14px;margin-bottom:16px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;color:var(--soft);font-weight:500}
+.input-row{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;background:#fff;padding:0 10px}
+input{border:0;outline:0;background:transparent}
+.field input{padding:9px 4px;width:100%;font:14px 'IBM Plex Mono';color:var(--ink)}
+.unit{font:11.5px 'IBM Plex Mono';color:var(--soft);white-space:nowrap}
+.divider{border:0;border-top:1px dashed var(--line);margin:18px 0}
+.results{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px}
+.result-card{background:var(--bone);border:1px solid var(--line);border-radius:10px;padding:12px 13px}
+.r-label{font-size:11px;color:var(--soft);margin-bottom:4px}
+.r-value{font:600 19px 'IBM Plex Mono'}
+.r-unit{font-size:12px;font-weight:500;color:var(--soft);margin-left:2px}
+.note{margin:13px 0 0;font-size:11.5px;color:var(--soft);line-height:1.6}
+.reference{background:var(--green-soft);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;line-height:1.7}
+.reference strong{font-weight:600}
+table.shrink{width:100%;border-collapse:collapse;font-size:13px}
+table.shrink th{text-align:left;font-size:11px;font-weight:500;color:var(--soft);padding:0 6px 8px;border-bottom:1px solid var(--line)}
+table.shrink td{padding:6px;border-bottom:1px solid var(--line)}
+table.shrink input{width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 7px;font:13px 'IBM Plex Mono';background:#fff}
+table.shrink .name-input{font-family:'IBM Plex Sans KR'}
+.del-btn{border:0;background:none;color:var(--soft);cursor:pointer;font-size:15px}
+.add-row{margin-top:12px;border:1px dashed var(--line);background:transparent;color:var(--soft);padding:8px 14px;border-radius:8px;font:500 12px 'IBM Plex Sans KR';cursor:pointer}
+@media(max-width:560px){
+  .tabs{grid-template-columns:repeat(2,1fr)}
+  .field-grid{grid-template-columns:1fr}
+  .panel{padding:20px 16px}
+  table.shrink{font-size:12px}
+}
+
+.site-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.save-open-btn{flex:0 0 auto;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:9px;padding:9px 14px;font:500 12px 'IBM Plex Sans KR';cursor:pointer;transition:.15s}
+.save-open-btn:hover{background:#fff;transform:translateY(-1px)}
+.save-open-btn:active{transform:translateY(0)}
+.modal-backdrop{position:fixed;inset:0;background:rgba(42,37,32,.28);display:none;align-items:center;justify-content:center;padding:20px;z-index:1000}
+.modal-backdrop.open{display:flex}
+.modal{width:min(520px,100%);max-height:min(720px,90vh);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 50px rgba(42,37,32,.15)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+.modal-title{font-family:Fraunces,serif;font-size:19px;font-weight:600}
+.modal-close{border:0;background:transparent;color:var(--soft);font-size:20px;cursor:pointer;line-height:1}
+.modal-body{padding:18px 20px 20px}
+.save-fields{display:grid;grid-template-columns:1fr 150px;gap:10px;margin-bottom:14px}
+.save-input{width:100%;border:1px solid var(--line);border-radius:8px;background:#fff;padding:10px 11px;outline:0;font:13px 'IBM Plex Sans KR';color:var(--ink)}
+.save-input:focus{border-color:var(--slate)}
+.save-primary{width:100%;border:0;border-radius:8px;background:var(--ink);color:#fff;padding:10px 12px;font:500 12px 'IBM Plex Sans KR';cursor:pointer}
+.saved-list{border-top:1px dashed var(--line);padding-top:15px;margin-top:15px}
+.saved-list-title{font-size:12px;color:var(--soft);margin-bottom:8px}
+.saved-empty{font-size:12px;color:var(--soft);padding:14px 0}
+.saved-item{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.saved-main{min-width:0;cursor:pointer}
+.saved-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.saved-meta{font:10px 'IBM Plex Mono';color:var(--soft);margin-top:3px}
+.saved-actions{display:flex;gap:5px}
+.saved-action{border:1px solid var(--line);background:transparent;color:var(--soft);border-radius:6px;padding:5px 7px;font:11px 'IBM Plex Sans KR';cursor:pointer}
+.saved-action:hover{background:#fff;color:var(--ink)}
+.saved-action.delete:hover{color:#8d4e3c}
+@media(max-width:560px){
+  .site-header{align-items:flex-start}
+  .save-open-btn{padding:8px 11px}
+  .save-fields{grid-template-columns:1fr}
+}
+
+
+.workspace-save{border:1px solid var(--line);background:rgba(255,255,255,.55);border-radius:12px;padding:13px 15px;margin-bottom:16px}
+.workspace-save-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.workspace-save-title{font-size:12px;font-weight:600}
+.workspace-save-sub{font-size:10px;color:var(--soft);margin-top:2px}
+.workspace-save-toggle{border:0;background:transparent;color:var(--soft);font:11px 'IBM Plex Sans KR';cursor:pointer;padding:4px}
+.workspace-save-toggle:hover{color:var(--ink)}
+.workspace-save-form{display:grid;grid-template-columns:1fr 145px 112px;gap:8px;margin-top:11px}
+.saved-list-inline{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+.saved-list-inline.collapsed{display:none}
+.saved-list-inline .saved-list-title{margin-bottom:5px}
+.saved-list-inline #saved-list-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px}
+.saved-list-inline .saved-item{min-width:0}
+@media(max-width:680px){
+  .workspace-save-form{grid-template-columns:1fr 1fr}
+  .workspace-save-form .save-primary{grid-column:1/-1}
+  .saved-list-inline #saved-list-body{grid-template-columns:1fr}
+}
+
+
+/* ===== Mobile / iPad usability patch ===== */
+*{box-sizing:border-box}
+html{width:100%;overflow-x:hidden;-webkit-text-size-adjust:100%}
+body{width:100%;max-width:100%;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit}
+button{min-height:44px;touch-action:manipulation;-webkit-user-select:none;user-select:none;pointer-events:auto;position:relative;z-index:2}
+input,select,textarea{min-height:44px;max-width:100%;touch-action:manipulation}
+.tabs{width:100%;position:relative;z-index:5}
+.tab{min-height:52px;touch-action:manipulation;pointer-events:auto;position:relative;z-index:6}
+.segmented{width:100%}.segmented button{min-height:44px;pointer-events:auto}
+.workspace-save,.calculator,.panel,.card{max-width:100%}
+.field-grid,.results,.workspace-save-form{min-width:0}
+.field-grid>*,.results>*,.workspace-save-form>*{min-width:0}
+input[type=number],input[type=text],input[type=date]{width:100%}
+.shrink{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.shrink table{min-width:620px}
+.saved-actions{flex-wrap:wrap}.saved-actions button{min-width:72px}
+@media(max-width:768px){
+.site-header{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+.workspace-save,.calculator{width:100%;max-width:100%}
+.workspace-save-form{grid-template-columns:1fr!important}.workspace-save-form .save-primary{grid-column:auto!important;width:100%}
+.field-grid{grid-template-columns:1fr!important}.results{grid-template-columns:1fr!important}
+.tabs{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px}.tab{width:100%;min-width:0;padding:10px 6px;line-height:1.25;word-break:keep-all}
+.segmented{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.segmented button{width:100%;min-width:0;padding:8px 5px}
+}
+@media(max-width:480px){
+.tabs{gap:6px}.tab{min-height:56px;font-size:13px}.segmented{grid-template-columns:1fr}
+.workspace-save-form{gap:8px}.saved-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.saved-actions button{width:100%}
+}
+@media(min-width:769px){.tabs{grid-template-columns:repeat(5,minmax(0,1fr))}}
+
+</style>
+
+<style>
+/* MOBILE TOUCH V2 */
+html,body{width:100%;min-width:0;overflow-x:hidden!important;-webkit-text-size-adjust:100%;}
+body{margin:0;-webkit-tap-highlight-color:transparent;}
+button,.tab,input,select,textarea{position:relative;z-index:100!important;pointer-events:auto!important;}
+button,.tab{touch-action:manipulation!important;cursor:pointer;}
+button,.tab,input,select,textarea{min-height:48px;}
+.tabs{position:relative;z-index:90!important;display:grid!important;gap:12px!important;padding:12px 0!important;isolation:isolate;}
+.tab{display:flex!important;align-items:center;justify-content:center;width:100%!important;margin:0!important;padding:12px 8px!important;min-height:58px!important;}
+.segmented{position:relative;z-index:80!important;display:grid!important;gap:10px!important;}
+.segmented button{width:100%!important;min-height:50px!important;margin:0!important;}
+.workspace-save-form{display:grid!important;gap:12px!important;}
+.workspace-save-form input,.workspace-save-form button{width:100%!important;}
+.field-grid,.results{display:grid!important;gap:14px!important;}
+.input-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:10px!important;}
+.input-row input{width:100%!important;min-width:0!important;}
+.shrink{max-width:100%!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch;}
+.shrink table{min-width:620px;}
+.saved-actions{display:flex!important;flex-wrap:wrap!important;gap:10px!important;}
+.saved-actions button{flex:1 1 110px!important;}
+@media(max-width:768px){
+ .tabs{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+ .workspace-save-form,.field-grid,.results{grid-template-columns:1fr!important;}
+ .workspace-save-form .save-primary{grid-column:1!important;}
+ .segmented{grid-template-columns:1fr 1fr!important;}
+}
+@media(max-width:480px){
+ .tabs{gap:10px!important;}
+ .tab{min-height:60px!important;font-size:13px!important;}
+ .segmented{grid-template-columns:1fr!important;}
+ .input-row{grid-template-columns:1fr!important;}
+ .input-row button{width:100%!important;}
+ .saved-actions{display:grid!important;grid-template-columns:1fr 1fr!important;}
+ .saved-actions button{width:100%!important;}
+}
+</style>
+<style>
+
+/* ===== FINAL MOBILE TOUCH + READABILITY FIX ===== */
+@media (max-width: 768px) {
+  .tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    margin: 14px 0 !important;
+  }
+
+  .tab {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 52px !important;
+    padding: 9px 6px !important;
+    margin: 0 !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 10px !important;
+    background: var(--surface) !important;
+    color: var(--ink) !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
+    position: relative !important;
+    z-index: 30 !important;
+  }
+
+  .tab .hole,
+  .tab .label {
+    pointer-events: none !important;
+  }
+
+  .tab .label {
+    text-align: center;
+    line-height: 1.25;
+  }
+
+  .tab .sub {
+    display: block;
+    margin-top: 3px;
+    font-size: 9px;
+  }
+
+  /* Keep the previous, less-spaced feel for the calculator itself. */
+  .panel {
+    padding: 18px 14px !important;
+  }
+
+  .field-grid {
+    gap: 10px !important;
+  }
+
+  .results {
+    gap: 10px !important;
+  }
+
+  /* Slip mode buttons: both must remain directly touchable. */
+  #slip-seg {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    position: relative !important;
+    z-index: 30 !important;
+  }
+
+  #slip-seg button {
+    min-height: 52px !important;
+    margin: 0 !important;
+    padding: 8px 6px !important;
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
+  }
+
+  /* Larger recommendation/status area for phone readability. */
+  .panel-desc,
+  .hint,
+  .result-label,
+  .result-value,
+  .status,
+  .recommend,
+  .range,
+  .target,
+  .note {
+    line-height: 1.5 !important;
+  }
+
+  .result-value {
+    font-size: 20px !important;
+  }
+
+  .result-label {
+    font-size: 12px !important;
+  }
+
+  /* Save controls */
+  .workspace-save-form {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .workspace-save-form .save-primary {
+    grid-column: 1 !important;
+    width: 100% !important;
+  }
+
+  .workspace-save-toggle {
+    min-height: 44px !important;
+    padding: 8px 12px !important;
+  }
+
+  .saved-actions {
+    gap: 6px !important;
+  }
+
+  /* Never let tables cover controls. */
+  .shrink {
+    overflow-x: auto !important;
+    position: relative !important;
+    z-index: 1 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .tabs {
+    gap: 7px !important;
+  }
+
+  .tab {
+    min-height: 54px !important;
+    font-size: 13px !important;
+  }
+
+  #slip-seg {
+    grid-template-columns: 1fr !important;
+    gap: 7px !important;
+  }
+
+  #slip-seg button {
+    min-height: 50px !important;
+  }
+
+  /* Recommendation values are intentionally larger on small screens. */
+  .result-value {
+    font-size: 21px !important;
+  }
+}
+
+/* Touch devices: remove hover-only visual dependence. */
+@media (hover: none) and (pointer: coarse) {
+  button:hover,
+  .tab:hover {
+    transform: none !important;
+  }
+
+  button:active,
+  .tab:active {
+    opacity: .78;
+  }
+}
+
+</style>
+
+<style>
+/* ===== UNIFIED CATEGORY BUTTONS ===== */
+.tabs{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:8px!important;margin:0 0 16px!important;padding:0!important;position:relative!important;z-index:50!important}
+.tabs .tab{appearance:none!important;-webkit-appearance:none!important;box-sizing:border-box!important;width:100%!important;min-width:0!important;height:auto!important;min-height:72px!important;margin:0!important;padding:12px 8px!important;background:var(--surface)!important;border:1px solid var(--line)!important;border-radius:10px!important;color:var(--ink)!important;text-align:center!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:0!important;cursor:pointer!important;pointer-events:auto!important;touch-action:manipulation!important;position:relative!important;z-index:51!important;transform:none!important}
+.tabs .tab:hover{transform:translateY(-1px)!important}
+.tabs .tab:active{transform:none!important;opacity:.82}
+.tabs .tab .hole{display:block!important;width:7px!important;height:7px!important;min-width:7px!important;min-height:7px!important;border-radius:50%!important;background:var(--bone)!important;border:1px solid var(--line)!important;margin:0 auto 7px!important;pointer-events:none!important}
+.tabs .tab .label{display:block!important;font-size:12.5px!important;font-weight:500!important;line-height:1.35!important;text-align:center!important;white-space:nowrap!important;pointer-events:none!important}
+.tabs .tab .sub{display:block!important;font-family:'IBM Plex Mono',monospace!important;font-size:9.5px!important;color:var(--soft)!important;line-height:1.2!important;margin-top:3px!important;letter-spacing:.02em!important;pointer-events:none!important}
+.tabs .tab.active{border-color:var(--accent)!important;background:var(--accent-soft)!important}
+.tabs .tab.active .hole{background:var(--accent)!important;border-color:var(--accent)!important}
+@media(max-width:768px){
+  .tabs{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;margin-bottom:14px!important}
+  .tabs .tab{min-height:68px!important;padding:10px 6px!important}
+  .tabs .tab .label{font-size:13px!important}
+  .tabs .tab .sub{font-size:9.5px!important}
+}
+@media(max-width:480px){
+  .tabs{gap:7px!important}
+  .tabs .tab{min-height:66px!important;padding:9px 5px!important}
+  .tabs .tab .label{font-size:12.5px!important}
+  .tabs .tab .sub{font-size:9px!important}
+}
+</style>
+<style>
+
+/* ===== CATEGORY LABEL OVERFLOW FIX ===== */
+.tab {
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  word-break: keep-all !important;
+  overflow-wrap: anywhere !important;
+}
+
+.tab .label,
+.tab span {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  text-align: center !important;
+}
+
+@media (max-width: 768px) {
+  .tab {
+    padding-left: 5px !important;
+    padding-right: 5px !important;
+  }
+
+  .tab .sub {
+    max-width: 100% !important;
+    font-size: 8px !important;
+    letter-spacing: .02em !important;
+    line-height: 1.2 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .tab {
+    min-height: 54px !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+
+  .tab .sub {
+    font-size: 7.5px !important;
+    letter-spacing: 0 !important;
+  }
+}
+
+</style>
+
+
+
+</head>
+<body>
+<div class="wrap">
+<header class="site-header">
+  <div>
+    <div class="eyebrow">Studio Calculator</div>
+    <h1>도자기 배합 계산기</h1>
+    <p>슬립·석고·안료·수축율을 간단하게 계산하는 작업용 도구입니다.</p>
+  </div>
+  <button class="save-open-btn" onclick="focusSaveName()">저장</button>
+</header>
+
+<div class="workspace-save">
+  <div class="workspace-save-head">
+    <div>
+      <div class="workspace-save-title">작업 기록</div>
+      <div class="workspace-save-sub">현재 계산과 저장한 작업을 한 화면에서 관리합니다.</div>
+    </div>
+    <button class="workspace-save-toggle" onclick="toggleSavedList()">저장 목록 접기</button>
+  </div>
+
+  <div class="workspace-save-form">
+    <input class="save-input" id="save-name" type="text" maxlength="60" placeholder="새 작업 이름 (예: 백자 머그 1차)">
+    <input class="save-input" id="save-date" type="date">
+    <button class="save-primary" onclick="saveCurrentWork()">현재 작업 저장</button>
+  </div>
+
+  <div class="saved-list-inline" id="saved-inline">
+    <div class="saved-list-title">저장한 작업</div>
+    <div id="saved-list-body"></div>
+  </div>
+</div>
+
+<nav class="tabs">
+  <button type="button" class="tab active" data-tool="slip" onclick="switchTool('slip')"><div class="hole"></div><div class="label">슬립 배합<span class="sub">SLIP</span></div></button>
+<button type="button" class="tab" data-tool="plaster" onclick="switchTool('plaster')"><div class="hole"></div><div class="label">석고 배합<span class="sub">PLASTER</span></div></button>
+<button type="button" class="tab" data-tool="pigment" onclick="switchTool('pigment')"><div class="hole"></div><div class="label">안료 퍼센트<span class="sub">PIGMENT</span></div></button>
+<button type="button" class="tab" data-tool="shrink" onclick="switchTool('shrink')"><div class="hole"></div><div class="label">수축율<span class="sub">SHRINKAGE</span></div></button>
+<button type="button" class="tab" data-tool="volume" onclick="switchTool('volume')"><div class="hole"></div><div class="label">부피 계산<span class="sub">VOLUME</span></div></button>
+</nav>
+
+<section class="panel active" id="panel-slip">
+  <div class="panel-title">슬립 배합 계산기</div>
+  <p class="panel-desc">슈퍼점토 슬립 기준으로 솔리드·드레인 캐스팅의 권장 비중과 규산소다 투입량을 계산합니다.</p>
+
+  <div class="segmented" id="slip-seg">
+    <button class="active" style="--seg-accent:var(--green)" onclick="setSlipMode('solid')">솔리드캐스팅<span style="display:block;font-size:9px;opacity:.75;margin-top:2px">압력주입</span></button>
+    <button style="--seg-accent:var(--green)" onclick="setSlipMode('drain')">드레인캐스팅<span style="display:block;font-size:9px;opacity:.75;margin-top:2px">일반주입</span></button>
+  </div>
+
+  <div class="field-grid">
+    <div class="field">
+      <label>점토(건조) 무게</label>
+      <div class="input-row"><input type="number" id="slip-clay" value="7500" min="0" oninput="calcSlip()"><span class="unit">g</span></div>
+    </div>
+    <div class="field">
+      <label>권장 비중</label>
+      <div class="input-row"><input type="number" id="slip-target" value="1.792" min="1" step="0.001" oninput="calcSlip()"><span class="unit">g/ml</span></div>
+    </div>
+    <div class="field">
+      <label>규산소다 비율</label>
+      <div class="input-row"><input type="number" id="slip-silicate" value="0.30" min="0" step="0.01" oninput="calcSlip()"><span class="unit">%</span></div>
+    </div>
+    <div class="field">
+      <label>실측 슬립 100cc</label>
+      <div class="input-row"><input type="number" id="slip-100cc" value="179.2" min="0" step="0.1" oninput="calcSlip()"><span class="unit">g</span></div>
+    </div>
+  </div>
+
+  <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--soft);margin-bottom:16px;cursor:pointer">
+    <input type="checkbox" id="cf44" onchange="calcSlip()"> CF-44 사용 (규산소다 투입량 50%)
+  </label>
+
+  <div class="results" id="slip-results"></div>
+  <p class="note">이미지 기준 권장 범위: 솔리드 1.773~1.792 / 규산소다 0.3~0.4% · 드레인 1.716~1.734 / 규산소다 0.5~0.6%. 기본값은 솔리드 1.792·0.30%, 드레인 1.716·0.60%입니다.</p>
+</section>
+
+<section class="panel" id="panel-plaster">
+  <div class="panel-title">CH 석고 혼수율 계산기</div>
+  <p class="panel-desc">석고 100%를 기준으로 물의 비율을 계산합니다. CH 석고의 기본 혼수율을 70%로 설정했습니다.</p>
+
+  <div class="segmented" id="plaster-seg">
+    <button class="active" style="--seg-accent:var(--slate)" onclick="setPlasterMode('plaster')">석고 기준</button>
+    <button style="--seg-accent:var(--slate)" onclick="setPlasterMode('water')">물 기준</button>
+  </div>
+
+  <div class="field-grid">
+    <div class="field">
+      <label>혼수율</label>
+      <div class="input-row"><input type="number" id="pl-water-rate" value="70" min="0" step="0.1" oninput="calcPlaster()"><span class="unit">%</span></div>
+    </div>
+    <div class="field" id="pl-plaster-field">
+      <label>석고 양</label>
+      <div class="input-row"><input type="number" id="pl-plaster" value="1000" min="0" step="1" oninput="calcPlaster()"><span class="unit">g</span></div>
+    </div>
+    <div class="field" id="pl-water-field" style="display:none">
+      <label>물의 양</label>
+      <div class="input-row"><input type="number" id="pl-water" value="700" min="0" step="1" oninput="calcPlaster()"><span class="unit">g</span></div>
+    </div>
+  </div>
+
+  <div class="reference">
+    <strong>CH 석고 기준</strong><br>
+    석고 100% : 물 70% = <strong>100 : 70</strong><br>
+    혼수율 = 물의 무게 ÷ 석고의 무게 × 100
+  </div>
+
+  <div class="results" id="plaster-results"></div>
+  <p class="note">예: 석고 1,000g에 혼수율 70%를 적용하면 물 700g이 필요합니다. 실제 작업에서는 사용하는 CH 석고의 제조사 권장 혼수율을 우선 확인하세요.</p>
+</section>
+
+<section class="panel" id="panel-pigment">
+  <div class="panel-title">안료 퍼센트 계산기</div>
+  <p class="panel-desc">기준 재료 무게에 대한 안료 비율을 계산하거나, 목표 퍼센트에 필요한 안료량을 계산합니다.</p>
+  <div class="segmented" id="pigment-seg">
+    <button class="active" style="--seg-accent:var(--oxide)" onclick="setPigmentMode('percent')">퍼센트 계산</button>
+    <button style="--seg-accent:var(--oxide)" onclick="setPigmentMode('amount')">안료량 계산</button>
+  </div>
+  <div class="field-grid">
+    <div class="field">
+      <label>기준 재료 무게</label>
+      <div class="input-row"><input type="number" id="pig-base" value="1000" min="0" oninput="calcPigment()"><span class="unit">g</span></div>
+    </div>
+    <div class="field" id="pig-amount-field">
+      <label>안료 무게</label>
+      <div class="input-row"><input type="number" id="pig-amount" value="30" min="0" oninput="calcPigment()"><span class="unit">g</span></div>
+    </div>
+    <div class="field" id="pig-target-field" style="display:none">
+      <label>목표 퍼센트</label>
+      <div class="input-row"><input type="number" id="pig-target" value="3" min="0" step="0.1" oninput="calcPigment()"><span class="unit">%</span></div>
+    </div>
+  </div>
+  <div class="results" id="pigment-results"></div>
+</section>
+
+<section class="panel" id="panel-shrink">
+  <div class="panel-title">수축율 계산기</div>
+  <p class="panel-desc">생 상태와 소성 후 크기를 입력하면 전체 수축율을 계산합니다.</p>
+  <table class="shrink">
+    <thead><tr><th style="width:22%">시편명</th><th>생 (mm)</th><th>소성 (mm)</th><th>수축율 (%)</th><th>소성온도</th><th></th></tr></thead>
+    <tbody id="shrink-body"></tbody>
+  </table>
+  <button class="add-row" onclick="addShrinkRow()">+ 시편 추가</button>
+  <p class="note">전체수축율 = (생 − 소성) ÷ 생 × 100</p>
+</section>
+
+<section class="panel" id="panel-volume">
+  <div class="panel-title">부피 계산기</div>
+  <p class="panel-desc">작업물이나 틀의 치수를 입력해 원통 또는 육면체의 부피를 계산합니다.</p>
+
+  <div class="segmented" id="volume-seg">
+    <button class="active" style="--seg-accent:var(--slate)" onclick="setVolumeMode('cylinder')">원통</button>
+    <button style="--seg-accent:var(--slate)" onclick="setVolumeMode('box')">육면체</button>
+  </div>
+
+  <div id="volume-cylinder">
+    <div class="field-grid">
+      <div class="field">
+        <label>지름</label>
+        <div class="input-row"><input type="number" id="vol-diameter" value="100" min="0" step="0.1" oninput="calcVolume()"><span class="unit">mm</span></div>
+      </div>
+      <div class="field">
+        <label>높이</label>
+        <div class="input-row"><input type="number" id="vol-height" value="100" min="0" step="0.1" oninput="calcVolume()"><span class="unit">mm</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="volume-box" style="display:none">
+    <div class="field-grid">
+      <div class="field">
+        <label>가로</label>
+        <div class="input-row"><input type="number" id="vol-width" value="100" min="0" step="0.1" oninput="calcVolume()"><span class="unit">mm</span></div>
+      </div>
+      <div class="field">
+        <label>세로</label>
+        <div class="input-row"><input type="number" id="vol-depth" value="100" min="0" step="0.1" oninput="calcVolume()"><span class="unit">mm</span></div>
+      </div>
+      <div class="field">
+        <label>높이</label>
+        <div class="input-row"><input type="number" id="vol-box-height" value="100" min="0" step="0.1" oninput="calcVolume()"><span class="unit">mm</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="results" id="volume-results"></div>
+  <p class="note" id="volume-note">원통 부피 = π × (지름 ÷ 2)² × 높이</p>
+</section>
+</div>
+
+
+
+
+<script>
+let slipMode='solid', plasterMode='water', pigmentMode='percent', shrinkRowCount=0;
+
+const SAVE_STORAGE_KEY='ceramicStudioCalculatorSaves_v1';
+
+function localDateString(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function focusSaveName(){
+  document.getElementById('save-date').value=localDateString();
+  renderSavedList();
+  document.getElementById('save-name').focus();
+  document.getElementById('save-name').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function openSaveModal(){ focusSaveName(); }
+function closeSaveModal(){ return; }
+function handleModalBackdrop(e){ return; }
+function toggleSavedList(){
+  const list=document.getElementById('saved-inline');
+  const button=document.querySelector('.workspace-save-toggle');
+  const collapsed=list.classList.toggle('collapsed');
+  button.textContent=collapsed?'저장 목록 펼치기':'저장 목록 접기';
+}
+
+function readSavedWorks(){
+  try{return JSON.parse(localStorage.getItem(SAVE_STORAGE_KEY)||'[]');}
+  catch(e){return [];}
+}
+function writeSavedWorks(items){
+  localStorage.setItem(SAVE_STORAGE_KEY,JSON.stringify(items));
+}
+
+function collectCalculatorState(){
+  const inputs={};
+  document.querySelectorAll('input').forEach(el=>{
+    if(!el.id || el.id==='save-name' || el.id==='save-date') return;
+    if(el.type==='checkbox') inputs[el.id]={type:'checkbox',value:el.checked};
+    else inputs[el.id]={type:el.type,value:el.value};
+  });
+
+  const shrinkRows=[];
+  document.querySelectorAll('#shrink-body tr').forEach(tr=>{
+    const name=tr.querySelector('.name-input')?.value||'';
+    const wet=tr.querySelector('input[id^="wet-"]')?.value||'';
+    const fired=tr.querySelector('input[id^="fired-"]')?.value||'';
+    const temp=tr.querySelector('input[id^="temp-"]')?.value||'';
+    shrinkRows.push({name,wet,fired,temp});
+  });
+
+  return {
+    activeTool:document.querySelector('.tab.active')?.dataset.tool||'slip',
+    slipMode,plasterMode,pigmentMode,inputs,shrinkRows
+  };
+}
+
+function setModeUIOnly(state){
+  if(state.slipMode){
+    slipMode=state.slipMode;
+    document.querySelectorAll('#slip-seg button').forEach((b,i)=>{
+      b.classList.toggle('active',(i===0)===(slipMode==='solid'));
+    });
+  }
+  if(state.plasterMode){
+    plasterMode=state.plasterMode;
+    document.querySelectorAll('#plaster-seg button').forEach((b,i)=>{
+      b.classList.toggle('active',(i===0)===(plasterMode==='plaster'));
+    });
+    document.getElementById('pl-plaster-field').style.display=plasterMode==='plaster'?'flex':'none';
+    document.getElementById('pl-water-field').style.display=plasterMode==='water'?'flex':'none';
+  }
+  if(state.pigmentMode){
+    pigmentMode=state.pigmentMode;
+    document.querySelectorAll('#pigment-seg button').forEach((b,i)=>{
+      b.classList.toggle('active',(i===0)===(pigmentMode==='percent'));
+    });
+    document.getElementById('pig-amount-field').style.display=pigmentMode==='percent'?'flex':'none';
+    document.getElementById('pig-target-field').style.display=pigmentMode==='amount'?'flex':'none';
+  }
+}
+
+function applyCalculatorState(state){
+  if(!state) return;
+
+  // Remove current shrink rows, then rebuild exactly what was saved.
+  document.getElementById('shrink-body').innerHTML='';
+  shrinkRowCount=0;
+
+  setModeUIOnly(state);
+
+  Object.entries(state.inputs||{}).forEach(([id,data])=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    if(data.type==='checkbox') el.checked=!!data.value;
+    else el.value=data.value;
+  });
+
+  (state.shrinkRows||[]).forEach(row=>{
+    addShrinkRow(row.name,row.wet,row.fired,row.temp);
+  });
+
+  if(state.activeTool) switchTool(state.activeTool);
+  calcSlip(); calcPlaster(); calcPigment(); calcVolume(); renderSavedList();
+  document.querySelectorAll('#shrink-body tr').forEach(tr=>{
+    const id=tr.id?.replace('shrink-row-','');
+    if(id) calcShrinkRow(id);
+  });
+}
+
+function saveCurrentWork(){
+  const name=document.getElementById('save-name').value.trim();
+  const date=document.getElementById('save-date').value||localDateString();
+
+  if(!name){
+    alert('작업 이름을 입력해주세요.');
+    document.getElementById('save-name').focus();
+    return;
+  }
+
+  const items=readSavedWorks();
+  items.unshift({
+    id:Date.now().toString(36)+Math.random().toString(36).slice(2,8),
+    name,date,createdAt:new Date().toISOString(),state:collectCalculatorState()
+  });
+  writeSavedWorks(items.slice(0,100));
+  document.getElementById('save-name').value='';
+  document.getElementById('save-date').value=localDateString();
+  renderSavedList();
+}
+
+function loadSavedWork(id){
+  const item=readSavedWorks().find(x=>x.id===id);
+  if(!item) return;
+  applyCalculatorState(item.state);
+  closeSaveModal();
+}
+
+function deleteSavedWork(id){
+  const item=readSavedWorks().find(x=>x.id===id);
+  if(!item) return;
+  if(!confirm(`"${item.name}" 작업을 삭제하시겠습니까?`)) return;
+  writeSavedWorks(readSavedWorks().filter(x=>x.id!==id));
+  renderSavedList();
+}
+
+function renderSavedList(){
+  const body=document.getElementById('saved-list-body');
+  const items=readSavedWorks().sort((a,b)=>
+    (b.date||'').localeCompare(a.date||'') ||
+    (b.createdAt||'').localeCompare(a.createdAt||'')
+  );
+
+  if(!items.length){
+    body.innerHTML='<div class="saved-empty">아직 저장한 작업이 없습니다.</div>';
+    return;
+  }
+
+  body.innerHTML=items.map(item=>`
+    <div class="saved-item">
+      <div class="saved-main" onclick="loadSavedWork('${item.id}')" title="불러오기">
+        <div class="saved-name">${escapeHtml(item.name)}</div>
+        <div class="saved-meta">${escapeHtml(item.date||'날짜 없음')}</div>
+      </div>
+      <div class="saved-actions">
+        <button class="saved-action" onclick="loadSavedWork('${item.id}')">불러오기</button>
+        <button class="saved-action delete" onclick="deleteSavedWork('${item.id}')">삭제</button>
+      </div>
+    </div>`).join('');
+}
+
+function escapeHtml(value){
+  return String(value).replace(/[&<>"']/g,c=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+
+
+function switchTool(tool){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tool===tool));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+tool));
+}
+function fmt(n,d=1){
+  return Number.isFinite(n) ? n.toLocaleString('ko-KR',{minimumFractionDigits:d,maximumFractionDigits:d}) : '—';
+}
+function setSlipMode(mode){
+  slipMode=mode;
+  const solid=mode==='solid';
+  document.querySelectorAll('#slip-seg button').forEach((b,i)=>b.classList.toggle('active',(i===0)===solid));
+  document.getElementById('slip-target').value=solid?'1.792':'1.716';
+  document.getElementById('slip-silicate').value=solid?'0.30':'0.60';
+  document.getElementById('slip-100cc').value=solid?'179.2':'171.6';
+  calcSlip();
+}
+function calcSlip(){
+  const clay=parseFloat(document.getElementById('slip-clay').value)||0;
+  const target=parseFloat(document.getElementById('slip-target').value)||0;
+  const silicateRate=parseFloat(document.getElementById('slip-silicate').value)||0;
+  const measured=(parseFloat(document.getElementById('slip-100cc').value)||0)/100;
+  const cf44=document.getElementById('cf44').checked;
+  const solid=slipMode==='solid';
+  const minTarget=solid?1.773:1.716;
+  const maxTarget=solid?1.792:1.734;
+  const silicate=clay*(silicateRate/100)*(cf44?0.5:1);
+
+  // 역산: 점토 비중 2.60 g/ml, 액상(물/규산소다) 1.00 g/ml 가정
+  const clayDensity=2.60, liquidDensity=1.00;
+  let water=0;
+  if(clay>0 && target>1){
+    water=(clay+silicate-target*((clay/clayDensity)+(silicate/liquidDensity)))/(target-liquidDensity);
+    if(water<0) water=0;
+  }
+  const total=clay+water+silicate;
+
+  let verdict='—';
+  if(measured>0){
+    if(measured>=minTarget && measured<=maxTarget) verdict='적정';
+    else if(measured<minTarget) verdict='낮음 (묽음)';
+    else verdict='높음 (되직함)';
+  }
+
+  document.getElementById('slip-results').innerHTML=`
+    <div class="result-card"><div class="r-label">필요한 물</div><div class="r-value">${fmt(water,0)}<span class="r-unit">g</span></div></div>
+    <div class="result-card"><div class="r-label">규산소다</div><div class="r-value">${fmt(silicate,1)}<span class="r-unit">g</span></div></div>
+    <div class="result-card"><div class="r-label">전체 슬립</div><div class="r-value">${fmt(total,0)}<span class="r-unit">g</span></div></div>
+    <div class="result-card"><div class="r-label">실측 비중</div><div class="r-value">${fmt(measured,3)}<span class="r-unit">g/ml</span></div></div>
+    <div class="result-card"><div class="r-label">권장 범위</div><div class="r-value" style="font-size:15px">${minTarget.toFixed(3)}~${maxTarget.toFixed(3)}</div></div>
+    <div class="result-card"><div class="r-label">실측 상태</div><div class="r-value" style="font-size:15px">${verdict}</div></div>`;
+}
+function setPlasterMode(mode){
+  document.querySelectorAll('#plaster-seg button').forEach((b,i)=>{
+    b.classList.toggle('active',(i===0)===(mode==='plaster'));
+  });
+  document.getElementById('pl-plaster-field').style.display=mode==='plaster'?'flex':'none';
+  document.getElementById('pl-water-field').style.display=mode==='water'?'flex':'none';
+  calcPlaster();
+}
+function calcPlaster(){
+  const rate=parseFloat(document.getElementById('pl-water-rate').value)||0;
+  let plaster=0, water=0;
+  const plasterMode=document.getElementById('pl-plaster-field').style.display!=='none';
+
+  if(plasterMode){
+    plaster=parseFloat(document.getElementById('pl-plaster').value)||0;
+    water=plaster*(rate/100);
+  }else{
+    water=parseFloat(document.getElementById('pl-water').value)||0;
+    plaster=rate>0 ? water/(rate/100) : 0;
+  }
+
+  document.getElementById('plaster-results').innerHTML=`
+    <div class="result-card"><div class="r-label">석고</div><div class="r-value">${fmt(plaster,0)}<span class="r-unit">g</span></div></div>
+    <div class="result-card"><div class="r-label">필요한 물</div><div class="r-value">${fmt(water,0)}<span class="r-unit">g</span></div></div>
+    <div class="result-card"><div class="r-label">전체 배합량</div><div class="r-value">${fmt(plaster+water,0)}<span class="r-unit">g</span></div></div>
+  `;
+}
+let volumeMode='cylinder';
+
+function setVolumeMode(mode){
+  volumeMode=mode;
+  document.querySelectorAll('#volume-seg button').forEach((b,i)=>{
+    b.classList.toggle('active',(i===0)===(mode==='cylinder'));
+  });
+  document.getElementById('volume-cylinder').style.display=mode==='cylinder'?'block':'none';
+  document.getElementById('volume-box').style.display=mode==='box'?'block':'none';
+  calcVolume();
+}
+function calcVolume(){
+  let mm3=0, formula='';
+  if(volumeMode==='cylinder'){
+    const diameter=parseFloat(document.getElementById('vol-diameter').value)||0;
+    const height=parseFloat(document.getElementById('vol-height').value)||0;
+    mm3=Math.PI*Math.pow(diameter/2,2)*height;
+    formula='원통 부피 = π × (지름 ÷ 2)² × 높이';
+  }else{
+    const width=parseFloat(document.getElementById('vol-width').value)||0;
+    const depth=parseFloat(document.getElementById('vol-depth').value)||0;
+    const height=parseFloat(document.getElementById('vol-box-height').value)||0;
+    mm3=width*depth*height;
+    formula='육면체 부피 = 가로 × 세로 × 높이';
+  }
+  const cm3=mm3/1000;
+  document.getElementById('volume-results').innerHTML=`
+    <div class="result-card"><div class="r-label">부피</div><div class="r-value">${fmt(cm3,1)}<span class="r-unit">cm³</span></div></div>
+    <div class="result-card"><div class="r-label">동일 부피</div><div class="r-value">${fmt(cm3,1)}<span class="r-unit">ml</span></div></div>`;
+  document.getElementById('volume-note').textContent=formula+' · 입력 mm → 결과 cm³(=ml)';
+}
+
+function setPigmentMode(mode){
+  pigmentMode=mode;
+  document.querySelectorAll('#pigment-seg button').forEach((b,i)=>b.classList.toggle('active',(i===0)===(mode==='percent')));
+  document.getElementById('pig-amount-field').style.display=mode==='percent'?'flex':'none';
+  document.getElementById('pig-target-field').style.display=mode==='amount'?'flex':'none';
+  calcPigment();
+}
+function calcPigment(){
+  const base=parseFloat(document.getElementById('pig-base').value)||0;
+  let value=0,label='',unit='';
+  if(pigmentMode==='percent'){
+    const amount=parseFloat(document.getElementById('pig-amount').value)||0;
+    value=base>0?amount/base*100:0; label='안료 퍼센트'; unit='%';
+  }else{
+    const target=parseFloat(document.getElementById('pig-target').value)||0;
+    value=base*target/100; label='필요한 안료량'; unit='g';
+  }
+  document.getElementById('pigment-results').innerHTML=`<div class="result-card"><div class="r-label">${label}</div><div class="r-value">${fmt(value,2)}<span class="r-unit">${unit}</span></div></div>`;
+}
+function addShrinkRow(name,wet,fired,temp){
+  shrinkRowCount++; const id=shrinkRowCount;
+  const tr=document.createElement('tr'); tr.id='shrink-row-'+id;
+  tr.innerHTML=`<td><input class="name-input" type="text" value="${name||'시편 '+id}"></td>
+    <td><input type="number" id="wet-${id}" value="${wet??100}" min="0" oninput="calcShrinkRow(${id})"></td>
+    <td><input type="number" id="fired-${id}" value="${fired??87}" min="0" oninput="calcShrinkRow(${id})"></td>
+    <td><input type="text" id="total-${id}" value="0" readonly></td>
+    <td><input type="number" id="temp-${id}" value="${temp??''}" placeholder="1230"></td>
+    <td><button class="del-btn" onclick="document.getElementById('shrink-row-${id}').remove()">✕</button></td>`;
+  document.getElementById('shrink-body').appendChild(tr); calcShrinkRow(id);
+}
+function calcShrinkRow(id){
+  const wet=parseFloat(document.getElementById('wet-'+id).value)||0;
+  const fired=parseFloat(document.getElementById('fired-'+id).value)||0;
+  document.getElementById('total-'+id).value=wet>0?((wet-fired)/wet*100).toFixed(1):'—';
+}
+calcSlip(); calcPlaster(); calcPigment(); calcVolume();
+addShrinkRow('시편 1',100,87,1230);
+addShrinkRow('시편 2',100,86,1230);
+addShrinkRow('시편 3',100,88,1250);
+</script>
+
+<script>
+(function(){
+  function installMobileTabHandler(){
+    const tabs = document.querySelector('.tabs');
+    if(!tabs || tabs.dataset.mobileHandlerInstalled) return;
+    tabs.dataset.mobileHandlerInstalled = '1';
+
+    function activate(e){
+      const tab = e.target.closest('.tab');
+      if(!tab || !tabs.contains(tab)) return;
+      const tool = tab.dataset.tool;
+      if(!tool) return;
+      e.preventDefault();
+      e.stopPropagation();
+      switchTool(tool);
+    }
+
+    tabs.addEventListener('click', activate, false);
+    tabs.addEventListener('touchend', function(e){
+      if(e.changedTouches && e.changedTouches.length){
+        activate(e);
+      }
+    }, {passive:false});
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', installMobileTabHandler);
+  }else{
+    installMobileTabHandler();
+  }
+})();
+</script>
+
+</body>
+</html>
